@@ -8,6 +8,7 @@ Scope is gmail.readonly ONLY — this module cannot send or delete mail.
 """
 
 import base64
+import datetime
 import os.path
 import re
 from html.parser import HTMLParser
@@ -17,9 +18,19 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# READ-ONLY scope only. If you ever change this, delete token.json so the
-# consent screen runs again with the new permissions.
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+# Scopes this app requests. Gmail stays READ-ONLY; we add the Sheets scope so
+# we can read (and later write) the tracker spreadsheet.
+#
+# NOTE on re-authentication: an OAuth token is bound to the exact scopes it was
+# granted for. token.json from earlier stages was authorized for gmail.readonly
+# ONLY, so it does NOT cover the new spreadsheets scope. A token can't be
+# "upgraded" to more scopes — the user must consent again. That's why
+# get_credentials() below detects a scope mismatch, discards the stale token,
+# and re-triggers the browser consent flow with the full scope set.
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/spreadsheets",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -27,10 +38,19 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 #   reuse token.json -> refresh if expired -> else browser consent -> save.
 # ---------------------------------------------------------------------------
 def get_credentials():
-    """Return valid Gmail API credentials, running the OAuth flow if needed."""
+    """Return valid Google API credentials, running the OAuth flow if needed."""
     creds = None
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    # Scope-change detection: if the saved token was granted a NARROWER set of
+    # scopes than we now require (e.g. it predates adding the Sheets scope), it
+    # cannot grant the new permission. Discard it so the full consent flow runs
+    # again below. (A token can gain scopes only via fresh user consent.)
+    if creds and not set(SCOPES).issubset(set(creds.scopes or [])):
+        creds = None
+        if os.path.exists("token.json"):
+            os.remove("token.json")
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
@@ -181,8 +201,23 @@ def fetch_recent_emails(service, max_results=15, snippet_chars=500):
             text_body = strip_html(raw_body) if is_html else raw_body
             snippet = _collapse_whitespace(text_body)[:snippet_chars]
 
+            # internalDate is the message's received time in epoch milliseconds;
+            # convert to a YYYY-MM-DD date for the tracker's Date column.
+            internal = msg.get("internalDate")
+            if internal:
+                date_str = datetime.datetime.fromtimestamp(
+                    int(internal) / 1000
+                ).strftime("%Y-%m-%d")
+            else:
+                date_str = ""
+
             emails.append(
-                {"sender": sender, "subject": subject, "body": snippet}
+                {
+                    "date": date_str,
+                    "sender": sender,
+                    "subject": subject,
+                    "body": snippet,
+                }
             )
         except Exception as exc:
             # Never let a single malformed message abort the run; record a
@@ -190,6 +225,7 @@ def fetch_recent_emails(service, max_results=15, snippet_chars=500):
             print(f"  [WARN] Could not fetch/parse a message ({exc}). Skipping body.")
             emails.append(
                 {
+                    "date": "",
                     "sender": "(unknown sender)",
                     "subject": "(could not read message)",
                     "body": "",
