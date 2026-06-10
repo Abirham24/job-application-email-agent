@@ -14,14 +14,14 @@ manual data entry.
 1. **Reads** my Gmail using the Gmail API with **read-only** access.
 2. **Classifies** each email with a local LLM (Llama 3.2 3B via Ollama) into one of:
    `application_confirmation`, `interview_invite`, `rejection`, `assessment`,
-   `job_listing`, or `other` — and extracts the company and role when present.
+   `job_listing`, or `other` and extracts the company and role when present.
 3. **Writes** the relevant emails to a Google Sheets job tracker, mapping each to the
    right columns and status, with a duplicate guard so it can be run repeatedly.
 
 ## Why it's built this way
 
 **Why an LLM instead of keyword rules.** Job-related emails are unstructured and
-endlessly varied — a rejection might read "we've decided to move forward with other
+endlessly varied, a rejection might read "we've decided to move forward with other
 candidates," "the position has been filled," or "we'll keep your resume on file."
 Keyword rules break on that variety. The model reads *meaning*, including cases where
 the subject line gives nothing away and only the body reveals the email's intent. The
