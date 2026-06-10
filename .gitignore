@@ -16,3 +16,6 @@ token.json
 token.pickle
 *.token
 credentials.json
+
+# Stage task/notes files
+stage*_task.md
