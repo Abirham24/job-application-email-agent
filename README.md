@@ -34,12 +34,7 @@ hardware. This is both a privacy decision and a cost decision (no per-token char
 
 ## Architecture
 
-```
-Gmail (read-only)  ──►  Local LLM classifier  ──►  Google Sheets tracker
-   gmail_client.py        classifier.py              sheets_client.py
-                          (Ollama / Llama 3.2 3B)
-                    orchestrated by agent.py
-```
+![Architecture diagram](docs/architecture.svg)
 
 - `gmail_client.py` — OAuth authentication and read-only message fetching.
 - `classifier.py` — prompt + call to the local model; parses and validates the JSON.
