@@ -1,7 +1,7 @@
 # Job Application Email Agent
 
 An AI agent that reads my Gmail, understands which messages relate to my job search,
-and automatically maintains my job-application tracker — using a language model that
+and automatically maintains my job-application tracker using a language model that
 runs **entirely on my own machine**, so my email content never leaves my computer.
 
 I built this to run my own job search. Every "thanks for applying" confirmation,
@@ -29,7 +29,7 @@ model returns strict JSON with a confidence score, and the code validates it and
 low-confidence cases rather than trusting them blindly.
 
 **Why a local model.** Email is sensitive. Running the classifier locally with Ollama
-means email content is never sent to a third-party API — inference happens on my own
+means email content is never sent to a third-party API-inference happens on my own
 hardware. This is both a privacy decision and a cost decision (no per-token charges).
 
 ## Architecture
